@@ -1,0 +1,6 @@
+{
+  "name": "Sterling Insight Hub",
+  "description": "Insight hub and analytics platform",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
