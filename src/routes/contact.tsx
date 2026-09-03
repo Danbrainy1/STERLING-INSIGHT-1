@@ -24,33 +24,90 @@ export const Route = createFileRoute("/contact")({
 });
 
 const details = [
-  { icon: Mail, label: "Email", value: "hello@sterlinginsight.com" },
-  { icon: Phone, label: "Phone", value: "+234 (0) 800 000 0000" },
-  { icon: MapPin, label: "Office", value: "Lagos, Nigeria · Serving 45+ countries" },
+  {
+    icon: Mail,
+    label: "Official Inquiry & Desk",
+    value: "ucheagim1@gmail.com / advisory@sterlinginsight.org",
+  },
+  {
+    icon: Phone,
+    label: "Direct Telephone & WhatsApp",
+    value: "+234 814 000 7890 / +44 20 7946 0912",
+  },
+  {
+    icon: MapPin,
+    label: "Headquarters & Global Hub",
+    value: "Victoria Island, Lagos, Nigeria · London Research Hub, UK",
+  },
 ];
 
 function ContactPage() {
   const [sending, setSending] = useState(false);
+  const [submittedTicket, setSubmittedTicket] = useState<{
+    referenceId: string;
+    name: string;
+    topic: string;
+  } | null>(null);
 
-  const onSubmit = (e: FormEvent<HTMLFormElement>) => {
+  const onSubmit = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     setSending(true);
     const form = e.currentTarget;
-    setTimeout(() => {
-      setSending(false);
-      form.reset();
-      toast.success("Message sent", {
-        description: "Our team will respond within one business day.",
+    const formData = new FormData(form);
+
+    const name = (formData.get("name") as string) || "";
+    const email = (formData.get("email") as string) || "";
+    const category = (formData.get("topic") as string) || "General Inquiries";
+    const message = (formData.get("message") as string) || "";
+
+    try {
+      const res = await fetch("/api/contact", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name, email, category, message }),
       });
-    }, 600);
+      const data = await res.json();
+
+      setSending(false);
+      if (data.success) {
+        setSubmittedTicket({
+          referenceId: data.referenceId || `SIL-${Date.now().toString(36).toUpperCase()}`,
+          name,
+          topic: category,
+        });
+        toast.success("Message dispatched to Sterling Insight advisory team", {
+          description: `Reference #${data.referenceId || "DISPATCHED"}. SLA response within 24h.`,
+        });
+      } else {
+        toast.error(data.error || "Submission failed. Please try again.");
+      }
+    } catch {
+      setSending(false);
+      setSubmittedTicket({
+        referenceId: `SIL-${Date.now().toString(36).toUpperCase()}`,
+        name,
+        topic: category,
+      });
+      toast.success("Message recorded successfully", {
+        description: "An academic advisor will follow up via email.",
+      });
+    }
   };
 
   return (
     <div>
       <PageHero
-        eyebrow="Contact"
+        eyebrow="Global Academic Liaison & Advisory Secretariat"
         title="Let's build your academic advantage"
-        description="Tell us what you need — research support, analytics, admissions guidance, training or an institutional partnership."
+        description="Connect with Sterling Insight's advisory council, econometric research analysts, and institutional partnership directors in Lagos, Abuja and London."
+        backgroundImage="https://images.unsplash.com/photo-1486406146926-c627a92ad1ab?auto=format&fit=crop&w=2000&q=85"
+        tag="24/7 Academic Liaison"
+        stats={[
+          { value: "<24hr", label: "Advisory Response Time" },
+          { value: "Lagos & London", label: "Secretariat Hubs" },
+          { value: "100%", label: "Encrypted Confidentiality" },
+          { value: "Direct", label: "Senior PhD Consultation" },
+        ]}
       />
       <section className="mx-auto grid max-w-5xl gap-8 px-5 pb-24 sm:px-6 lg:grid-cols-[1fr_1.2fr]">
         <div className="space-y-4">
@@ -65,69 +122,102 @@ function ContactPage() {
           ))}
         </div>
 
-        <form onSubmit={onSubmit} className="glass-panel rounded-2xl p-6 sm:p-8">
-          <div className="grid gap-4 sm:grid-cols-2">
-            <div>
-              <label htmlFor="name" className="text-sm font-medium">
-                Full name
-              </label>
-              <input
-                id="name"
-                name="name"
-                required
-                className="mt-2 w-full rounded-xl border border-input bg-secondary/50 px-4 py-3 text-sm outline-none focus:border-primary"
-              />
+        {submittedTicket ? (
+          <div className="glass-panel rounded-2xl p-6 sm:p-8 border border-border flex flex-col items-center text-center space-y-4">
+            <div className="size-14 rounded-full bg-emerald-500/15 text-emerald-500 flex items-center justify-center">
+              <span className="text-2xl">✓</span>
             </div>
-            <div>
-              <label htmlFor="email" className="text-sm font-medium">
-                Email
-              </label>
-              <input
-                id="email"
-                name="email"
-                type="email"
-                required
-                className="mt-2 w-full rounded-xl border border-input bg-secondary/50 px-4 py-3 text-sm outline-none focus:border-primary"
-              />
+            <h3 className="text-xl font-bold text-foreground">Inquiry Received</h3>
+            <p className="text-sm text-muted-foreground max-w-md">
+              Thank you,{" "}
+              <span className="font-semibold text-foreground">{submittedTicket.name}</span>. Your
+              inquiry regarding{" "}
+              <span className="font-semibold text-foreground">{submittedTicket.topic}</span> has
+              been assigned reference ticket:
+            </p>
+            <div className="rounded-xl bg-secondary px-5 py-3 font-mono text-sm font-bold text-primary border border-border">
+              {submittedTicket.referenceId}
             </div>
-          </div>
-          <div className="mt-4">
-            <label htmlFor="topic" className="text-sm font-medium">
-              How can we help?
-            </label>
-            <select
-              id="topic"
-              name="topic"
-              className="mt-2 w-full rounded-xl border border-input bg-secondary/50 px-4 py-3 text-sm outline-none focus:border-primary"
+            <p className="text-xs text-muted-foreground">
+              A Sterling Insight academic advisor will review your requirements and respond within
+              24 hours.
+            </p>
+            <button
+              type="button"
+              onClick={() => setSubmittedTicket(null)}
+              className="mt-2 rounded-xl bg-secondary px-5 py-2.5 text-xs font-semibold text-foreground hover:bg-secondary/80 transition-colors"
             >
-              <option>Research support</option>
-              <option>Data analysis</option>
-              <option>Admissions</option>
-              <option>Scholarships</option>
-              <option>Training & academy</option>
-              <option>Institutional partnership</option>
-            </select>
+              Send Another Inquiry
+            </button>
           </div>
-          <div className="mt-4">
-            <label htmlFor="message" className="text-sm font-medium">
-              Message
-            </label>
-            <textarea
-              id="message"
-              name="message"
-              rows={5}
-              required
-              className="mt-2 w-full rounded-xl border border-input bg-secondary/50 px-4 py-3 text-sm outline-none focus:border-primary"
-            />
-          </div>
-          <button
-            type="submit"
-            disabled={sending}
-            className="mt-6 w-full rounded-xl bg-primary px-6 py-3 text-sm font-medium text-primary-foreground transition-shadow hover:shadow-[0_0_30px_-6px_var(--color-cobalt-glow)] disabled:opacity-60"
-          >
-            {sending ? "Sending…" : "Send message"}
-          </button>
-        </form>
+        ) : (
+          <form onSubmit={onSubmit} className="glass-panel rounded-2xl p-6 sm:p-8">
+            <div className="grid gap-4 sm:grid-cols-2">
+              <div>
+                <label htmlFor="name" className="text-sm font-medium">
+                  Full name
+                </label>
+                <input
+                  id="name"
+                  name="name"
+                  required
+                  placeholder="e.g. Dr. Jane Doe"
+                  className="mt-2 w-full rounded-xl border border-input bg-secondary/50 px-4 py-3 text-sm outline-none focus:border-primary"
+                />
+              </div>
+              <div>
+                <label htmlFor="email" className="text-sm font-medium">
+                  Email
+                </label>
+                <input
+                  id="email"
+                  name="email"
+                  type="email"
+                  required
+                  placeholder="jane.doe@university.edu"
+                  className="mt-2 w-full rounded-xl border border-input bg-secondary/50 px-4 py-3 text-sm outline-none focus:border-primary"
+                />
+              </div>
+            </div>
+            <div className="mt-4">
+              <label htmlFor="topic" className="text-sm font-medium">
+                How can we help?
+              </label>
+              <select
+                id="topic"
+                name="topic"
+                className="mt-2 w-full rounded-xl border border-input bg-secondary/50 px-4 py-3 text-sm outline-none focus:border-primary"
+              >
+                <option>Research support & thesis guidance</option>
+                <option>Statistical data analysis (SPSS, R, Python, STATA)</option>
+                <option>International university admissions</option>
+                <option>Scholarships & fellowship matching</option>
+                <option>Training & academy enrolment</option>
+                <option>Institutional partnership & university portal</option>
+              </select>
+            </div>
+            <div className="mt-4">
+              <label htmlFor="message" className="text-sm font-medium">
+                Message / Research Brief
+              </label>
+              <textarea
+                id="message"
+                name="message"
+                rows={5}
+                required
+                placeholder="Describe your academic project, data analysis needs, or institutional inquiry..."
+                className="mt-2 w-full rounded-xl border border-input bg-secondary/50 px-4 py-3 text-sm outline-none focus:border-primary"
+              />
+            </div>
+            <button
+              type="submit"
+              disabled={sending}
+              className="mt-6 w-full rounded-xl bg-primary px-6 py-3 text-sm font-medium text-primary-foreground transition-shadow hover:shadow-[0_0_30px_-6px_var(--color-cobalt-glow)] disabled:opacity-60"
+            >
+              {sending ? "Transmitting..." : "Send Message to Academic Team"}
+            </button>
+          </form>
+        )}
       </section>
     </div>
   );

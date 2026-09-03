@@ -25,6 +25,7 @@ export interface ResearchItem {
   publishedDate: string;
   format: string;
   fileSize: string;
+  imageUrl?: string;
   abstract: string;
   methodology: string;
   keyFindings: string[];
@@ -48,6 +49,8 @@ export const RESEARCH_ITEMS: ResearchItem[] = [
     publishedDate: "May 2026",
     format: "PDF, PyTorch Code & Clean CSV Datasets",
     fileSize: "18.5 MB",
+    imageUrl:
+      "https://images.unsplash.com/photo-1532187863486-abf9dbad1b69?auto=format&fit=crop&w=800&q=80",
     abstract:
       "This dissertation introduces a novel hybrid transformer-convolutional architecture for analyzing high-throughput multi-omics sequencing data. The framework achieves state-of-the-art predictive performance in identifying oncogenic genomic mutations across 12 cancer types with 96.4% precision.",
     methodology:
@@ -81,6 +84,8 @@ export const RESEARCH_ITEMS: ResearchItem[] = [
     publishedDate: "Mar 2026",
     format: "PDF, STATA Do-Files & SPSS Dataset",
     fileSize: "8.2 MB",
+    imageUrl:
+      "https://images.unsplash.com/photo-1590283603385-17ffb3a7f29f?auto=format&fit=crop&w=800&q=80",
     abstract:
       "An empirical investigation leveraging Panel Vector Autoregression (PVAR) to measure the impact of mobile money and Central Bank Digital Currencies (CBDCs) on financial inclusion, inflation dynamics, and informal sector velocity across 14 West African nations.",
     methodology:
@@ -114,6 +119,8 @@ export const RESEARCH_ITEMS: ResearchItem[] = [
     publishedDate: "Jan 2026",
     format: "DOCX, KoboToolbox XLSForm & SPSS Template",
     fileSize: "2.1 MB",
+    imageUrl:
+      "https://images.unsplash.com/photo-1434030216411-0b793f4b4173?auto=format&fit=crop&w=800&q=80",
     abstract:
       "A validated 45-item standardized research survey instrument designed for socio-economic baseline studies, community interventions, and agricultural impact evaluations. Includes Likert scales, reliability benchmarks (Cronbach Alpha = 0.88), and mobile survey deployment files.",
     methodology:
@@ -146,6 +153,8 @@ export const RESEARCH_ITEMS: ResearchItem[] = [
     publishedDate: "Apr 2026",
     format: "PDF, Python Jupyter Notebooks & Hourly Solar CSV",
     fileSize: "24.1 MB",
+    imageUrl:
+      "https://images.unsplash.com/photo-1508514177221-188b1cf16e9d?auto=format&fit=crop&w=800&q=80",
     abstract:
       "Proposes an ensemble XGBoost-LSTM framework for short-term and ultra-short-term solar irradiance prediction using satellite imagery and microgrid sensors. Results demonstrate a 22% reduction in Mean Absolute Percentage Error (MAPE) under cloudy tropical weather regimes.",
     methodology:
@@ -179,6 +188,8 @@ export const RESEARCH_ITEMS: ResearchItem[] = [
     publishedDate: "Feb 2026",
     format: "PDF, Jupyter Notebook & Dataset",
     fileSize: "6.4 MB",
+    imageUrl:
+      "https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?auto=format&fit=crop&w=800&q=80",
     abstract:
       "An automated semantic extraction pipeline that digests 50+ academic PDF papers, synthesizes methodologies, sample sizes, and key conclusions into structured CSV/Excel literature review matrices using fine-tuned Llama and Gemini embedding pipelines.",
     methodology:
@@ -212,6 +223,8 @@ export const RESEARCH_ITEMS: ResearchItem[] = [
     publishedDate: "Jun 2026",
     format: "SPSS (.sav), Stata (.dta), CSV & Codebook PDF",
     fileSize: "12.8 MB",
+    imageUrl:
+      "https://images.unsplash.com/photo-1551288049-bebda4e38f71?auto=format&fit=crop&w=800&q=80",
     abstract:
       "A cleaned, anonymized national dataset capturing survey responses from 3,850 postgraduate students across 28 African and European universities. Measures research funding availability, advisor interaction satisfaction, publication pressure, and statistical analysis hurdles.",
     methodology:

@@ -1,6 +1,6 @@
 {
-  "name": "Sterling Insight Hub",
-  "description": "Insight hub and analytics platform",
+  "name": "Sterling Insight",
+  "description": "Academic Intelligence, Engineered — Research repository marketplace, statistical data analysis, admissions, scholarships, and academic advisory platform.",
   "requestFramePermissions": [],
   "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
 }

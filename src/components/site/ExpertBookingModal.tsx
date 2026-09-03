@@ -1,42 +1,102 @@
 import { useState, type FormEvent } from "react";
-import { X, Calendar, Clock, DollarSign, CheckCircle2, ShieldCheck, User } from "lucide-react";
+import {
+  X,
+  Calendar,
+  Clock,
+  DollarSign,
+  CheckCircle2,
+  ShieldCheck,
+  User,
+  Wallet,
+  MessageSquare,
+  Sparkles,
+  Layers,
+  ArrowRight,
+} from "lucide-react";
 import { toast } from "sonner";
 import { type Expert } from "@/data/experts-data";
 import { useAuth } from "@/lib/auth-context";
 import { useNavigate } from "@tanstack/react-router";
+import { formatMoney } from "@/lib/currency";
+import type { HiredProject } from "@/types";
 
 interface ExpertBookingModalProps {
   expert: Expert | null;
   onClose: () => void;
+  onOpenWorkspace?: (project: HiredProject) => void;
 }
 
-export function ExpertBookingModal({ expert, onClose }: ExpertBookingModalProps) {
-  const { isAuthenticated, addBooking } = useAuth();
+export function ExpertBookingModal({ expert, onClose, onOpenWorkspace }: ExpertBookingModalProps) {
+  const {
+    user,
+    isAuthenticated,
+    walletBalanceUSD,
+    activeCurrency,
+    addBooking,
+    hireExpert,
+    register,
+    refreshWallet,
+  } = useAuth();
   const navigate = useNavigate();
 
+  const [bookingMode, setBookingMode] = useState<"consultation" | "project_hire">("project_hire");
   const [selectedDate, setSelectedDate] = useState("2026-08-22");
-  const [selectedSlot, setSelectedSlot] = useState(expert?.availableSlots[0] || "10:00 AM WAT");
-  const [topic, setTopic] = useState("Research Methodology & Proposal Review");
+  const [selectedSlot, setSelectedSlot] = useState(expert?.availableSlots?.[0] || "10:00 AM WAT");
+  const [topic, setTopic] = useState("Empirical Analysis & Methodology Formulation");
   const [notes, setNotes] = useState("");
-  const [paymentMethod, setPaymentMethod] = useState<"card" | "transfer">("card");
+  const [customBudgetUSD, setCustomBudgetUSD] = useState(
+    expert?.hourlyRate ? expert.hourlyRate * 2.5 : 150,
+  );
+
+  const [paymentMethod, setPaymentMethod] = useState<
+    "wallet" | "paystack" | "flutterwave" | "stripe" | "paypal"
+  >(walletBalanceUSD >= 65 ? "wallet" : "paystack");
+
+  // Guest details if not logged in
+  const [guestName, setGuestName] = useState("");
+  const [guestEmail, setGuestEmail] = useState("");
+
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isSuccess, setIsSuccess] = useState(false);
+  const [createdProject, setCreatedProject] = useState<HiredProject | null>(null);
 
   if (!expert) return null;
 
-  const handleSubmit = (e: FormEvent) => {
+  const totalAmountUSD = bookingMode === "consultation" ? expert.hourlyRate : customBudgetUSD;
+  const hasWalletFunds = walletBalanceUSD >= totalAmountUSD;
+
+  const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
+
     if (!isAuthenticated) {
-      toast.error("Authentication required", {
-        description: "Please sign in or register to book an expert consultation.",
+      if (!guestName.trim() || !guestEmail.trim()) {
+        toast.error("Please enter your name and email to proceed.");
+        return;
+      }
+      await register({
+        name: guestName,
+        email: guestEmail,
+        password: "secureUserPass123",
+        role: "Researcher",
       });
-      navigate({ to: "/auth" });
-      onClose();
-      return;
     }
 
     setIsSubmitting(true);
-    setTimeout(() => {
+
+    try {
+      // 1. If project hire, create interactive collaboration room
+      let newHiredProj: HiredProject | null = null;
+      if (bookingMode === "project_hire") {
+        newHiredProj = await hireExpert({
+          expertId: expert.id,
+          topic,
+          budget: customBudgetUSD,
+          paymentMethod,
+        });
+        setCreatedProject(newHiredProj);
+      }
+
+      // 2. Also register booking record
       addBooking({
         expertId: expert.id,
         expertName: expert.name,
@@ -45,20 +105,28 @@ export function ExpertBookingModal({ expert, onClose }: ExpertBookingModalProps)
         topic,
         date: selectedDate,
         timeSlot: selectedSlot,
-        notes: notes || "Standard academic advisory session brief.",
-        amount: expert.hourlyRate,
+        notes: notes || "Empirical research & statistical formulation brief.",
+        amount: totalAmountUSD,
       });
+
+      await refreshWallet();
       setIsSubmitting(false);
       setIsSuccess(true);
-      toast.success("Consultation booked successfully!", {
-        description: `Session scheduled with ${expert.name} on ${selectedDate}.`,
-      });
-    }, 1000);
+      toast.success(
+        bookingMode === "project_hire"
+          ? "Project commissioned in Escrow!"
+          : "Advisory consultation confirmed!",
+      );
+    } catch (err) {
+      console.warn("Booking error:", err);
+      setIsSubmitting(false);
+      toast.error("Could not process booking. Please try again.");
+    }
   };
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-200">
-      <div className="glass-panel relative w-full max-w-xl max-h-[90vh] overflow-y-auto rounded-3xl p-6 sm:p-8 shadow-2xl border border-border bg-card text-card-foreground">
+      <div className="glass-panel relative w-full max-w-xl max-h-[92vh] overflow-y-auto rounded-3xl p-6 sm:p-8 shadow-2xl border border-border bg-card text-card-foreground">
         <button
           type="button"
           onClick={onClose}
@@ -72,41 +140,68 @@ export function ExpertBookingModal({ expert, onClose }: ExpertBookingModalProps)
             <div className="mx-auto flex size-16 items-center justify-center rounded-full bg-emerald-500/20 text-emerald-500">
               <CheckCircle2 className="size-10" />
             </div>
-            <h3 className="text-2xl font-bold font-display">Booking Confirmed!</h3>
+            <h3 className="text-2xl font-bold font-display">
+              {bookingMode === "project_hire"
+                ? "Collaboration Workspace Initialized!"
+                : "Session Confirmed!"}
+            </h3>
             <p className="text-sm text-muted-foreground max-w-md mx-auto">
-              Your consultation with <strong className="text-foreground">{expert.name}</strong> is
-              scheduled for <span className="text-primary font-medium">{selectedDate}</span> at{" "}
-              <span className="text-primary font-medium">{selectedSlot}</span>.
+              You are now partnered with <strong className="text-foreground">{expert.name}</strong>.
+              Escrow protection is active and your funds will only be released as deliverables are
+              approved.
             </p>
+
             <div className="rounded-2xl border border-border bg-secondary/50 p-4 text-left text-xs space-y-2">
               <div className="flex justify-between">
-                <span className="text-muted-foreground">Expert:</span>
+                <span className="text-muted-foreground">Expert Advisor:</span>
                 <span className="font-semibold">{expert.name}</span>
               </div>
               <div className="flex justify-between">
-                <span className="text-muted-foreground">Topic:</span>
-                <span className="font-semibold">{topic}</span>
+                <span className="text-muted-foreground">Service Topic:</span>
+                <span className="font-semibold truncate max-w-[240px]">{topic}</span>
               </div>
               <div className="flex justify-between">
-                <span className="text-muted-foreground">Amount Paid:</span>
-                <span className="font-semibold text-emerald-500">${expert.hourlyRate} USD</span>
+                <span className="text-muted-foreground">Escrow Amount:</span>
+                <span className="font-semibold text-emerald-500 font-mono">
+                  {formatMoney(totalAmountUSD, activeCurrency)}
+                </span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-muted-foreground">Payment Service:</span>
+                <span className="font-semibold uppercase">{paymentMethod}</span>
               </div>
             </div>
-            <div className="flex flex-col sm:flex-row gap-3 pt-4">
-              <button
-                type="button"
-                onClick={() => {
-                  onClose();
-                  navigate({ to: "/dashboard" });
-                }}
-                className="w-full rounded-xl bg-primary px-6 py-3 text-sm font-medium text-primary-foreground"
-              >
-                Go to My Dashboard
-              </button>
+
+            <div className="pt-3 flex flex-col sm:flex-row gap-3">
+              {createdProject && onOpenWorkspace ? (
+                <button
+                  type="button"
+                  onClick={() => {
+                    onClose();
+                    onOpenWorkspace(createdProject);
+                  }}
+                  className="w-full rounded-xl bg-primary px-6 py-3.5 text-sm font-semibold text-primary-foreground shadow-lg flex items-center justify-center gap-2"
+                >
+                  <MessageSquare className="size-4" />
+                  Open Collaboration Chat & Room
+                </button>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => {
+                    onClose();
+                    navigate({ to: "/dashboard" });
+                  }}
+                  className="w-full rounded-xl bg-primary px-6 py-3.5 text-sm font-semibold text-primary-foreground shadow-lg flex items-center justify-center gap-2"
+                >
+                  <Calendar className="size-4" />
+                  View in My Dashboard
+                </button>
+              )}
               <button
                 type="button"
                 onClick={onClose}
-                className="w-full rounded-xl border border-border px-6 py-3 text-sm font-medium hover:bg-secondary"
+                className="w-full rounded-xl border border-border px-6 py-3.5 text-sm font-medium hover:bg-secondary"
               >
                 Close Window
               </button>
@@ -114,164 +209,261 @@ export function ExpertBookingModal({ expert, onClose }: ExpertBookingModalProps)
           </div>
         ) : (
           <div>
-            {/* Header / Expert Bio */}
-            <div className="flex items-start gap-4 pb-6 border-b border-border/60">
+            {/* Header */}
+            <div className="flex items-center gap-4 pb-4 border-b border-border/60">
               <img
                 src={expert.avatar}
                 alt={expert.name}
-                className="size-16 rounded-2xl object-cover border border-border shadow-sm"
+                className="size-14 rounded-2xl object-cover border-2 border-primary/30"
               />
               <div>
-                <span className="inline-block rounded-full bg-primary/20 px-2.5 py-0.5 text-[11px] font-semibold text-primary">
-                  ${expert.hourlyRate} / hour
-                </span>
-                <h3 className="text-xl font-bold font-display mt-1">{expert.name}</h3>
-                <p className="text-xs text-muted-foreground">
-                  {expert.title} · {expert.institution}
-                </p>
-                <div className="flex items-center gap-1 mt-1 text-amber-500 text-xs font-semibold">
-                  ★ {expert.rating}{" "}
-                  <span className="text-muted-foreground font-normal">
-                    ({expert.reviewsCount} reviews)
+                <h3 className="text-lg font-bold font-display">{expert.name}</h3>
+                <p className="text-xs text-muted-foreground">{expert.title}</p>
+                <div className="flex items-center gap-2 mt-1">
+                  <span className="text-xs font-bold text-primary font-mono">
+                    {formatMoney(expert.hourlyRate, activeCurrency)} / hr
                   </span>
+                  <span className="text-[11px] text-muted-foreground">({expert.institution})</span>
                 </div>
               </div>
             </div>
 
-            <form onSubmit={handleSubmit} className="mt-6 space-y-5">
-              {/* Consultation Topic */}
-              <div>
-                <label className="block text-xs font-semibold text-foreground mb-1.5">
-                  Consultation Focus Area
-                </label>
-                <select
-                  value={topic}
-                  onChange={(e) => setTopic(e.target.value)}
-                  className="w-full rounded-xl border border-input bg-secondary/50 px-3.5 py-2.5 text-xs outline-none focus:border-primary"
-                >
-                  <option value="Research Methodology & Proposal Review">
-                    Research Methodology & Proposal Review
-                  </option>
-                  <option value="Statistical Data Analysis (SPSS / R / Python)">
-                    Statistical Data Analysis (SPSS / R / Python)
-                  </option>
-                  <option value="Journal Publication & Manuscript Editing">
-                    Journal Publication & Manuscript Editing
-                  </option>
-                  <option value="Scholarship & Admissions Guidance">
-                    Scholarship & Admissions Guidance
-                  </option>
-                  <option value="Thesis Defense & Oral Presentation Prep">
-                    Thesis Defense & Oral Presentation Prep
-                  </option>
-                </select>
-              </div>
+            {/* Mode Toggle: Consultation vs Project Hire */}
+            <div className="grid grid-cols-2 gap-2 mt-4 p-1 rounded-2xl bg-secondary/60 border border-border">
+              <button
+                type="button"
+                onClick={() => setBookingMode("project_hire")}
+                className={`flex items-center justify-center gap-1.5 rounded-xl py-2 text-xs font-semibold transition-all ${
+                  bookingMode === "project_hire"
+                    ? "bg-primary text-primary-foreground shadow-sm"
+                    : "text-muted-foreground hover:text-foreground"
+                }`}
+              >
+                <Layers className="size-3.5" />
+                Hire for Project / Escrow
+              </button>
+              <button
+                type="button"
+                onClick={() => setBookingMode("consultation")}
+                className={`flex items-center justify-center gap-1.5 rounded-xl py-2 text-xs font-semibold transition-all ${
+                  bookingMode === "consultation"
+                    ? "bg-primary text-primary-foreground shadow-sm"
+                    : "text-muted-foreground hover:text-foreground"
+                }`}
+              >
+                <Calendar className="size-3.5" />
+                1-on-1 Consultation Call
+              </button>
+            </div>
 
-              {/* Date & Time Slot */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-xs font-semibold text-foreground mb-1.5">
-                    Select Date
-                  </label>
-                  <div className="relative">
+            <form onSubmit={handleSubmit} className="mt-4 space-y-4">
+              {/* If guest */}
+              {!isAuthenticated && (
+                <div className="rounded-2xl border border-primary/20 bg-primary/5 p-3.5 space-y-2">
+                  <p className="text-xs font-semibold text-foreground">
+                    Your Scholar Contact Details
+                  </p>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                     <input
-                      type="date"
-                      value={selectedDate}
-                      onChange={(e) => setSelectedDate(e.target.value)}
-                      min="2026-08-15"
+                      type="text"
                       required
-                      className="w-full rounded-xl border border-input bg-secondary/50 px-3.5 py-2.5 text-xs outline-none focus:border-primary"
+                      placeholder="Your Full Name"
+                      value={guestName}
+                      onChange={(e) => setGuestName(e.target.value)}
+                      className="w-full rounded-xl border border-input bg-card px-3 py-2 text-xs outline-none focus:border-primary"
+                    />
+                    <input
+                      type="email"
+                      required
+                      placeholder="email@university.edu"
+                      value={guestEmail}
+                      onChange={(e) => setGuestEmail(e.target.value)}
+                      className="w-full rounded-xl border border-input bg-card px-3 py-2 text-xs outline-none focus:border-primary"
                     />
                   </div>
                 </div>
+              )}
 
-                <div>
-                  <label className="block text-xs font-semibold text-foreground mb-1.5">
-                    Available Time Slot
-                  </label>
-                  <select
-                    value={selectedSlot}
-                    onChange={(e) => setSelectedSlot(e.target.value)}
-                    className="w-full rounded-xl border border-input bg-secondary/50 px-3.5 py-2.5 text-xs outline-none focus:border-primary"
-                  >
-                    {expert.availableSlots.map((slot) => (
-                      <option key={slot} value={slot}>
-                        {slot}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-              </div>
-
-              {/* Research Brief */}
               <div>
-                <label className="block text-xs font-semibold text-foreground mb-1.5">
-                  Research Brief / Key Questions for the Expert
+                <label className="block text-xs font-semibold text-foreground mb-1">
+                  Project Objective / Consultation Focus
                 </label>
-                <textarea
-                  value={notes}
-                  onChange={(e) => setNotes(e.target.value)}
-                  rows={3}
-                  placeholder="Describe your study topic, specific dataset challenges, or questions..."
+                <input
+                  type="text"
+                  required
+                  placeholder="e.g. Econometric Data Modeling using STATA & Python"
+                  value={topic}
+                  onChange={(e) => setTopic(e.target.value)}
                   className="w-full rounded-xl border border-input bg-secondary/50 px-3.5 py-2.5 text-xs outline-none focus:border-primary"
                 />
               </div>
 
-              {/* Payment Method */}
-              <div>
-                <label className="block text-xs font-semibold text-foreground mb-1.5">
-                  Payment Method
-                </label>
+              {bookingMode === "consultation" ? (
                 <div className="grid grid-cols-2 gap-3">
-                  <button
-                    type="button"
-                    onClick={() => setPaymentMethod("card")}
-                    className={`rounded-xl border p-3 text-xs font-medium text-left transition-all ${
-                      paymentMethod === "card"
-                        ? "border-primary bg-primary/10 text-foreground"
-                        : "border-border bg-secondary/40 text-muted-foreground"
-                    }`}
-                  >
-                    💳 Card / Debit (Instant)
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setPaymentMethod("transfer")}
-                    className={`rounded-xl border p-3 text-xs font-medium text-left transition-all ${
-                      paymentMethod === "transfer"
-                        ? "border-primary bg-primary/10 text-foreground"
-                        : "border-border bg-secondary/40 text-muted-foreground"
-                    }`}
-                  >
-                    🏦 Bank Transfer / Wire
-                  </button>
+                  <div>
+                    <label className="block text-xs font-semibold text-foreground mb-1">
+                      Preferred Date
+                    </label>
+                    <input
+                      type="date"
+                      required
+                      value={selectedDate}
+                      onChange={(e) => setSelectedDate(e.target.value)}
+                      className="w-full rounded-xl border border-input bg-secondary/50 px-3 py-2 text-xs outline-none focus:border-primary"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-semibold text-foreground mb-1">
+                      Available Time Slot
+                    </label>
+                    <select
+                      value={selectedSlot}
+                      onChange={(e) => setSelectedSlot(e.target.value)}
+                      className="w-full rounded-xl border border-input bg-secondary/50 px-3 py-2 text-xs outline-none focus:border-primary"
+                    >
+                      {expert.availableSlots.map((slot) => (
+                        <option key={slot} value={slot}>
+                          {slot}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
                 </div>
-              </div>
+              ) : (
+                <div>
+                  <div className="flex justify-between items-center mb-1">
+                    <label className="text-xs font-semibold text-foreground">
+                      Total Milestone Escrow Budget (USD)
+                    </label>
+                    <span className="text-xs font-mono font-bold text-primary">
+                      {formatMoney(customBudgetUSD, activeCurrency)}
+                    </span>
+                  </div>
+                  <input
+                    type="number"
+                    min="50"
+                    max="5000"
+                    required
+                    value={customBudgetUSD}
+                    onChange={(e) => setCustomBudgetUSD(Number(e.target.value))}
+                    className="w-full rounded-xl border border-input bg-secondary/50 px-3.5 py-2 text-xs outline-none focus:border-primary"
+                  />
+                  <p className="text-[11px] text-muted-foreground mt-1">
+                    Funds are placed in secure escrow and released milestone-by-milestone upon your
+                    explicit approval.
+                  </p>
+                </div>
+              )}
 
-              {/* Price & Guarantee Summary */}
-              <div className="rounded-2xl border border-border bg-secondary/40 p-4 flex items-center justify-between">
-                <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                  <ShieldCheck className="size-4 text-emerald-500" />
-                  <span>100% Satisfaction or free session reschedule</span>
-                </div>
-                <div className="text-right">
-                  <span className="text-[10px] text-muted-foreground uppercase tracking-wider block">
-                    Total
-                  </span>
-                  <span className="text-lg font-bold font-display text-primary">
-                    ${expert.hourlyRate} USD
-                  </span>
+              {/* Payment selector */}
+              <div className="space-y-2">
+                <label className="block text-xs font-semibold text-foreground">
+                  Select Payment / Escrow Funding Service
+                </label>
+
+                {/* Wallet button */}
+                <button
+                  type="button"
+                  onClick={() => setPaymentMethod("wallet")}
+                  className={`w-full rounded-2xl border p-3 flex items-center justify-between transition-all ${
+                    paymentMethod === "wallet"
+                      ? "border-primary bg-primary/10 ring-1 ring-primary"
+                      : "border-border bg-secondary/30 hover:bg-secondary/60"
+                  }`}
+                >
+                  <div className="flex items-center gap-2.5">
+                    <Wallet className="size-4 text-primary" />
+                    <span className="text-xs font-bold text-foreground">
+                      Sterling Wallet ({formatMoney(walletBalanceUSD, activeCurrency)})
+                    </span>
+                  </div>
+                  {hasWalletFunds ? (
+                    <span className="text-[10px] font-bold text-emerald-500 bg-emerald-500/15 px-2 py-0.5 rounded-full">
+                      Instant 1-Click
+                    </span>
+                  ) : (
+                    <span className="text-[10px] text-destructive">Insufficient balance</span>
+                  )}
+                </button>
+
+                {/* Local & International Gateways */}
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setPaymentMethod("paystack")}
+                    className={`rounded-xl border p-2 text-center text-xs transition-all ${
+                      paymentMethod === "paystack"
+                        ? "border-primary bg-primary/10 ring-1 ring-primary font-bold text-foreground"
+                        : "border-border bg-secondary/30 text-muted-foreground hover:text-foreground"
+                    }`}
+                  >
+                    <span className="block font-bold">Paystack</span>
+                    <span className="text-[9px] text-emerald-500">Local NGN</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setPaymentMethod("flutterwave")}
+                    className={`rounded-xl border p-2 text-center text-xs transition-all ${
+                      paymentMethod === "flutterwave"
+                        ? "border-primary bg-primary/10 ring-1 ring-primary font-bold text-foreground"
+                        : "border-border bg-secondary/30 text-muted-foreground hover:text-foreground"
+                    }`}
+                  >
+                    <span className="block font-bold">Flutterwave</span>
+                    <span className="text-[9px] text-amber-500">Africa</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setPaymentMethod("stripe")}
+                    className={`rounded-xl border p-2 text-center text-xs transition-all ${
+                      paymentMethod === "stripe"
+                        ? "border-primary bg-primary/10 ring-1 ring-primary font-bold text-foreground"
+                        : "border-border bg-secondary/30 text-muted-foreground hover:text-foreground"
+                    }`}
+                  >
+                    <span className="block font-bold">Stripe</span>
+                    <span className="text-[9px] text-purple-500">Global Cards</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setPaymentMethod("paypal")}
+                    className={`rounded-xl border p-2 text-center text-xs transition-all ${
+                      paymentMethod === "paypal"
+                        ? "border-primary bg-primary/10 ring-1 ring-primary font-bold text-foreground"
+                        : "border-border bg-secondary/30 text-muted-foreground hover:text-foreground"
+                    }`}
+                  >
+                    <span className="block font-bold">PayPal</span>
+                    <span className="text-[9px] text-blue-500">Worldwide</span>
+                  </button>
                 </div>
               </div>
 
               <button
                 type="submit"
                 disabled={isSubmitting}
-                className="w-full rounded-xl bg-primary px-6 py-3.5 text-sm font-medium text-primary-foreground transition-shadow hover:shadow-[0_0_30px_-6px_var(--color-cobalt-glow)] disabled:opacity-60"
+                className="w-full rounded-xl bg-primary px-6 py-3.5 text-sm font-semibold text-primary-foreground shadow-lg transition-shadow hover:shadow-[0_0_25px_-5px_var(--color-cobalt-glow)] disabled:opacity-60 flex items-center justify-center gap-2"
               >
-                {isSubmitting
-                  ? "Processing Payment & Reservation…"
-                  : `Confirm & Pay $${expert.hourlyRate}`}
+                {isSubmitting ? (
+                  <>
+                    <Sparkles className="size-4 animate-spin" />
+                    Engaging Advisor & Initializing Escrow Room…
+                  </>
+                ) : (
+                  <>
+                    {bookingMode === "project_hire" ? (
+                      <>
+                        <Layers className="size-4" />
+                        Hire {expert.name} ({formatMoney(totalAmountUSD, activeCurrency)})
+                      </>
+                    ) : (
+                      <>
+                        <Calendar className="size-4" />
+                        Book Session ({formatMoney(totalAmountUSD, activeCurrency)})
+                      </>
+                    )}
+                  </>
+                )}
               </button>
             </form>
           </div>

@@ -82,32 +82,38 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
     meta: [
       { charSet: "utf-8" },
       { name: "viewport", content: "width=device-width, initial-scale=1" },
-      { title: "Sterling Insight Limited" },
+      { title: "Sterling Insight | Academic Intelligence, Engineered" },
       {
         name: "description",
-        content: "Research, education, analytics, admissions and knowledge marketplace platform.",
+        content:
+          "Sterling Insight — Academic Intelligence, Engineered. Research repository marketplace, data analytics, academic advisory, admissions, scholarships, and learning platform.",
       },
       { name: "author", content: "Sterling Insight Limited" },
-      { property: "og:title", content: "Sterling Insight Limited" },
+      { property: "og:title", content: "Sterling Insight | Academic Intelligence, Engineered" },
       {
         property: "og:description",
-        content: "Research, education, analytics, admissions and knowledge marketplace platform.",
+        content:
+          "Academic Intelligence, Engineered. Vetted research repository, expert data analysts, admissions, scholarships, and academic intelligence.",
       },
       { property: "og:type", content: "website" },
+      { property: "og:image", content: "/sterling-logo.jpg" },
       { name: "twitter:card", content: "summary_large_image" },
+      { name: "twitter:image", content: "/sterling-logo.jpg" },
     ],
     links: [
       { rel: "preconnect", href: "https://fonts.googleapis.com" },
       { rel: "preconnect", href: "https://fonts.gstatic.com", crossOrigin: "anonymous" },
       {
         rel: "stylesheet",
-        href: "https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600&display=swap",
+        href: "https://fonts.googleapis.com/css2?family=Cinzel:wght@500;600;700&family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600;700&display=swap",
       },
       {
         rel: "stylesheet",
         href: appCss,
       },
       { rel: "icon", href: "/favicon.ico", type: "image/x-icon" },
+      { rel: "icon", href: "/favicon.png", type: "image/png" },
+      { rel: "apple-touch-icon", href: "/apple-touch-icon.png" },
     ],
   }),
   shellComponent: RootShell,
